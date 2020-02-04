@@ -59,7 +59,7 @@ class Auth extends \fast\Auth
         }
         $admin->loginfailure = 0;
         $admin->logintime = time();
-        $admin->loginip = request()->ip(0, false);
+        $admin->loginip = request()->ip();
         $admin->token = Random::uuid();
         $admin->save();
         Session::set("admin", $admin->toArray());
@@ -73,7 +73,7 @@ class Auth extends \fast\Auth
     public function logout()
     {
         $admin = Admin::get(intval($this->id));
-        if (!$admin) {
+        if ($admin) {
             $admin->token = '';
             $admin->save();
         }
@@ -103,7 +103,7 @@ class Auth extends \fast\Auth
             if ($key != md5(md5($id) . md5($keeptime) . md5($expiretime) . $admin->token)) {
                 return false;
             }
-            $ip = request()->ip(0, false);
+            $ip = request()->ip();
             //IP有变动
             if ($admin->loginip != $ip) {
                 return false;
@@ -137,7 +137,8 @@ class Auth extends \fast\Auth
 
     public function check($name, $uid = '', $relation = 'or', $mode = 'url')
     {
-        return parent::check($name, $this->id, $relation, $mode);
+        $uid = $uid ? $uid : $this->id;
+        return parent::check($name, $uid, $relation, $mode);
     }
 
     /**
@@ -182,11 +183,16 @@ class Auth extends \fast\Auth
         if (Config::get('fastadmin.login_unique')) {
             $my = Admin::get($admin['id']);
             if (!$my || $my['token'] != $admin['token']) {
+                $this->logout();
                 return false;
             }
         }
-        if (!isset($admin['loginip']) || $admin['loginip'] != request()->ip(0, false)) {
-            return false;
+        //判断管理员IP是否变动
+        if (Config::get('fastadmin.loginip_check')) {
+            if (!isset($admin['loginip']) || $admin['loginip'] != request()->ip()) {
+                $this->logout();
+                return false;
+            }
         }
         $this->logined = true;
         return true;
@@ -339,24 +345,33 @@ class Auth extends \fast\Auth
         if ($this->breadcrumb || !$path) {
             return $this->breadcrumb;
         }
-        $path_rule_id = 0;
+        $titleArr = [];
+        $menuArr = [];
+        $urlArr = explode('/', $path);
+        foreach ($urlArr as $index => $item) {
+            $pathArr[implode('/', array_slice($urlArr, 0, $index + 1))] = $index;
+        }
+        if (!$this->rules && $this->id) {
+            $this->getRuleList();
+        }
         foreach ($this->rules as $rule) {
-            $path_rule_id = $rule['name'] == $path ? $rule['id'] : $path_rule_id;
-        }
-        if ($path_rule_id) {
-            $this->breadcrumb = Tree::instance()->init($this->rules)->getParents($path_rule_id, true);
-            foreach ($this->breadcrumb as $k => &$v) {
-                $v['url'] = url($v['name']);
-                $v['title'] = __($v['title']);
+            if (isset($pathArr[$rule['name']])) {
+                $rule['title'] = __($rule['title']);
+                $rule['url'] = url($rule['name']);
+                $titleArr[$pathArr[$rule['name']]] = $rule['title'];
+                $menuArr[$pathArr[$rule['name']]] = $rule;
             }
+
         }
+        ksort($menuArr);
+        $this->breadcrumb = $menuArr;
         return $this->breadcrumb;
     }
 
     /**
      * 获取左侧和顶部菜单栏
      *
-     * @param array  $params URL对应的badge数据
+     * @param array  $params    URL对应的badge数据
      * @param string $fixedPage 默认页
      * @return array
      */

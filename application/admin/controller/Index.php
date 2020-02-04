@@ -32,6 +32,8 @@ class Index extends Backend
             config('fastadmin.multiplenav', true);
         }
         parent::_initialize();
+        //移除HTML标签
+        $this->request->filter('trim,strip_tags,htmlspecialchars');
     }
 
     /**

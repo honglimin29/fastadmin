@@ -202,7 +202,6 @@ class Backend extends Controller
             'jsname'         => 'backend/' . str_replace('.', '/', $controllername),
             'moduleurl'      => rtrim(url("/{$modulename}", '', false), '/'),
             'language'       => $lang,
-            'fastadmin'      => Config::get('fastadmin'),
             'referer'        => Session::get("referer")
         ];
         $config = array_merge($config, Config::get("view_replace_str"));
@@ -229,6 +228,7 @@ class Backend extends Controller
      */
     protected function loadlang($name)
     {
+        $name =  Loader::parseName($name);
         Lang::load(APP_PATH . $this->request->module() . '/lang/' . $this->request->langset() . '/' . str_replace('.', '/', $name) . '.php');
     }
 
@@ -451,7 +451,7 @@ class Backend extends Controller
         //如果有primaryvalue,说明当前是初始化传值
         if ($primaryvalue !== null) {
             $where = [$primarykey => ['in', $primaryvalue]];
-            $pagesize = null;
+            $pagesize = 99999;
         } else {
             $where = function ($query) use ($word, $andor, $field, $searchfield, $custom) {
                 $logic = $andor == 'AND' ? '&' : '|';

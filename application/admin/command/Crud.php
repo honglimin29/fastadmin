@@ -440,6 +440,11 @@ class Crud extends Command
                 }
             }
 
+            //继续删除菜单
+            if ($menu) {
+                exec("php think menu -c {$controllerUrl} -d 1 -f 1");
+            }
+
             $output->info("Delete Successed");
             return;
         }
@@ -673,7 +678,7 @@ class Crud extends Command
 
                         $formAddElement = $this->getReplacedStub('html/' . $inputType, ['field' => $field, 'fieldName' => $fieldName, 'fieldList' => $this->getFieldListName($field), 'attrStr' => Form::attributes($attrArr), 'selectedValue' => $defaultValue]);
                         $formEditElement = $this->getReplacedStub('html/' . $inputType, ['field' => $field, 'fieldName' => $fieldName, 'fieldList' => $this->getFieldListName($field), 'attrStr' => Form::attributes($attrArr), 'selectedValue' => "\$row.{$field}"]);
-                    } elseif ($inputType == 'textarea') {
+                    } elseif ($inputType == 'textarea' && !$this->isMatchSuffix($field, $this->selectpagesSuffix) && !$this->isMatchSuffix($field, $this->imageField)) {
                         $cssClassArr[] = $this->isMatchSuffix($field, $this->editorSuffix) ? $this->editorClass : '';
                         $attrArr['class'] = implode(' ', $cssClassArr);
                         $attrArr['rows'] = 5;
@@ -1454,6 +1459,9 @@ EOD;
         }
         if (in_array($formatter, ['image', 'images'])) {
             $html .= ", events: Table.api.events.image";
+        }
+        if (in_array($formatter, ['toggle'])) {
+            $html .= ", table: table";
         }
         if ($itemArr && !$formatter) {
             $formatter = 'normal';
